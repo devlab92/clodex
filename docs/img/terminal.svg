@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 590" width="900" height="590" role="img" aria-labelledby="t d" xml:space="preserve">
+  <title id="t">Exemplo do terminal durante um debate</title>
+  <desc id="d">O maestro mostra cada turno começando e terminando, com o veredito; quando o Codex pergunta algo, o terminal mostra a pergunta, o Luiz digita a resposta e o debate continua até o consenso e o relatório.</desc>
+  <style>
+    .t { font-family: Consolas, 'Cascadia Mono', Menlo, 'DejaVu Sans Mono', monospace; font-size: 13.5px; fill: #e5e7eb; white-space: pre; }
+    .cinza { fill: #8b949e; } .ciano { fill: #56d4dd; } .verde { fill: #7ee787; } .azul { fill: #79c0ff; }
+    .magenta { fill: #e3a3f7; } .amarelo { fill: #f2cc60; } .b { font-weight: 700; } .branco { fill: #ffffff; }
+  </style>
+  <rect x="0" y="0" width="900" height="590" rx="12" fill="#0d1117"/>
+  <rect x="0" y="0" width="900" height="36" rx="12" fill="#21262d"/>
+  <rect x="0" y="24" width="900" height="12" fill="#21262d"/>
+  <circle cx="22" cy="18" r="6" fill="#ff5f57"/><circle cx="42" cy="18" r="6" fill="#febc2e"/><circle cx="62" cy="18" r="6" fill="#28c840"/>
+  <text x="450" y="23" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif" font-size="12.5" fill="#8b949e">PS C:\...\ticket_system&gt; revezar iniciar alinhamento/2026-09-28-telas</text>
+
+  <text class="t" x="20" y="64"><tspan class="b branco">━━ Revezamento · Telas de compra no celular ━━</tspan></text>
+  <text class="t cinza" x="20" y="84">Claude → Codex · até 3 ciclo(s) · autonomia: perguntar · relator: Claude · permissões: leitura</text>
+  <text class="t cinza" x="20" y="104">Você pode digitar aqui a qualquer momento:</text>
+  <text class="t cinza" x="20" y="124">  texto + Enter    sua fala; as IAs leem antes do próximo turno</text>
+  <text class="t cinza" x="20" y="144">  /pausar  /retomar  /parar  /parar agora  /status  /ajuda</text>
+
+  <text class="t" x="20" y="174"><tspan class="ciano">▶</tspan> Turno 1 · <tspan class="b">Claude</tspan> começou <tspan class="cinza">(ciclo 1 de 3)</tspan></text>
+  <text class="t cinza" x="20" y="194">  … Claude trabalhando há 1m00s</text>
+  <text class="t" x="20" y="214"><tspan class="verde">✔</tspan> Turno 1 · Claude terminou em 4m12s · <tspan class="azul">CONTINUAR</tspan> · <tspan class="cinza">01-claude.md</tspan></text>
+  <text class="t" x="20" y="234"><tspan class="ciano">▶</tspan> Turno 2 · <tspan class="b">Codex</tspan> começou <tspan class="cinza">(ciclo 1 de 3)</tspan></text>
+  <text class="t" x="20" y="254"><tspan class="verde">✔</tspan> Turno 2 · Codex terminou em 6m40s · <tspan class="magenta">PERGUNTA</tspan> · <tspan class="cinza">02-codex.md</tspan></text>
+
+  <text class="t magenta b" x="20" y="284">❓ Codex precisa de você (turno 2):</text>
+  <text class="t" x="20" y="304">   1. O Pix aparece antes do cartão? Opções: sim / não. Recomendo: sim.</text>
+  <text class="t magenta" x="20" y="324">Digite sua resposta e tecle Enter (texto longo: @arquivo.md).</text>
+  <rect x="14" y="332" width="420" height="24" rx="4" fill="#1f2a37" stroke="#e3a3f7" stroke-opacity="0.5"/>
+  <text class="t" x="20" y="349"><tspan class="cinza">você ›</tspan> <tspan class="b branco">Sim, Pix primeiro.</tspan></text>
+  <text class="t verde" x="20" y="374">✉ Resposta recebida. O debate continua.</text>
+  <text class="t" x="20" y="394"><tspan class="magenta">✎</tspan> Turno 3 · Luiz: sua fala foi gravada <tspan class="cinza">03-luiz.md</tspan></text>
+  <text class="t" x="20" y="414"><tspan class="ciano">▶</tspan> Turno 4 · <tspan class="b">Claude</tspan> começou <tspan class="cinza">(ciclo 2 de 3)</tspan></text>
+  <text class="t cinza" x="20" y="434">  ⋮</text>
+  <text class="t" x="20" y="454"><tspan class="verde">✔</tspan> Turno 6 · Codex terminou em 3m05s · <tspan class="verde">CONSENSO</tspan> · <tspan class="cinza">06-codex.md</tspan></text>
+  <text class="t verde" x="20" y="474">★ Consenso: todas as IAs concordaram.</text>
+  <text class="t" x="20" y="494"><tspan class="verde">✔</tspan> Relatório escrito em 2m30s · <tspan class="cinza">07-relatorio.md</tspan></text>
+  <text class="t" x="20" y="514"><tspan class="verde">✔</tspan> Codex conferiu o relatório: <tspan class="verde">confere</tspan></text>
+  <text class="t verde b" x="20" y="544">■ Debate concluído.</text>
+  <text class="t" x="20" y="564">  Relatório: <tspan class="b">alinhamento\2026-09-28-telas\07-relatorio.md</tspan></text>
+</svg>

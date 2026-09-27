@@ -1,0 +1,28 @@
+{
+  "name": "revezamento-ia",
+  "version": "0.1.0",
+  "description": "Maestro que faz duas IAs de código (Claude Code e Codex) debaterem em turnos, sozinhas, com limite de ciclos, pausa para o humano e relatório final.",
+  "type": "module",
+  "bin": {
+    "revezar": "bin/revezar.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "exemplos"
+  ],
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "multi-agent",
+    "debate",
+    "orchestrator"
+  ]
+}

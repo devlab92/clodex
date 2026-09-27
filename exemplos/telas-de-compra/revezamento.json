@@ -1,0 +1,12 @@
+{
+  "tema": "Telas de compra de ingresso no celular",
+  "participantes": ["claude", "codex"],
+  "max_ciclos": 3,
+  "autonomia": "perguntar",
+  "humano": "Luiz",
+  "relator": "claude",
+  "conferencia_do_relatorio": true,
+  "permissoes": "leitura",
+  "tempo_max_turno_min": 30,
+  "instrucoes_extras": "Pense sempre no comprador com pressa, no celular, com internet ruim."
+}

@@ -1,0 +1,13 @@
+{
+  "topic": "Mockup of the order confirmation screen",
+  "participants": ["claude", "codex"],
+  "max_cycles": 2,
+  "autonomy": "ask",
+  "human": "Alex",
+  "language": "en",
+  "reporter": "claude",
+  "report_review": true,
+  "permissions": "write",
+  "turn_timeout_min": 40,
+  "extra_instructions": "Each screen proposal goes as a single HTML file (inline CSS, no internet) in your attachments folder. In the turn text, explain the screen and cite the file."
+}

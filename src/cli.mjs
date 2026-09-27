@@ -1,219 +1,211 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { AGENTES } from './agentes/index.mjs';
-import { ARQUIVO_PAUTA, carregarDebate, criarDebate, ehPastaDeDebate } from './config.mjs';
-import { cor } from './console.mjs';
-import { enviarParaCaixa, lerEstado, lerUltimo, maestroAtivo, registrarUltimo } from './estado.mjs';
-import { continuar, gerarRelatorio, iniciar } from './maestro.mjs';
-import { descreverStatus } from './status.mjs';
-import { ErroAmigavel, resolverTexto } from './util.mjs';
+import { AGENTS } from './agents/index.mjs';
+import { BRIEF_FILE, CONFIG_FILE, createDebate, isDebateFolder, loadDebate } from './config.mjs';
+import { continueDebate, generateReport, start } from './orchestrator.mjs';
+import { isRunning, readLast, readState, rememberLast, sendToInbox } from './state.mjs';
+import { describeStatus } from './status.mjs';
+import { color } from './terminal.mjs';
+import { UserError, resolveText } from './util.mjs';
 
-const AJUDA = `${cor.negrito('revezar')}: faz duas IAs debaterem em turnos, sozinhas, e te entrega um relatório.
+const HELP = `${color.bold('Clodex · AI interaction')}: Claude Code and Codex debate in turns, on their own, and you get a report.
 
-${cor.negrito('Uso básico')}
-  revezar novo <pasta> --tema "..."     cria o debate (config + pauta em branco)
-  revezar iniciar [pasta]               começa ou retoma o debate neste terminal
-  revezar status [pasta]                mostra em que pé está
+${color.bold('Basics')}
+  clodex new <folder> --topic "..."     creates a debate (config + blank brief)
+  clodex start [folder]                 starts or resumes the debate in this terminal
+  clodex status [folder]                shows where things stand
 
-${cor.negrito('Participar enquanto roda')} (ou digite direto no terminal do maestro)
-  revezar responder [pasta] "texto"     responde a uma pergunta ou comenta (aceita @arquivo.md)
-  revezar pausar [pasta]                pausa ao fim do turno atual
-  revezar retomar [pasta]               continua depois de pausa ou erro
-  revezar parar [pasta] [--agora]       para ao fim do turno (ou já, com --agora)
+${color.bold('Taking part while it runs')} (or type straight into the orchestrator's terminal)
+  clodex reply [folder] "text"          answers a question or comments (accepts @file.md)
+  clodex pause [folder]                 pauses when the current turn ends
+  clodex resume [folder]                continues after a pause or an error
+  clodex stop [folder] [--now]          stops when the current turn ends (or right away, with --now)
 
-${cor.negrito('Depois do fim')}
-  revezar continuar [pasta] [--mais N] [--mensagem "..."]   mais N ciclos (padrão 1)
-  revezar relatorio [pasta]             gera o relatório agora
+${color.bold('After the end')}
+  clodex continue [folder] [--more N] [--message "..."]   N more cycles (default 1)
+  clodex report [folder]                generates the report now
 
-${cor.negrito('Outros')}
-  revezar diagnostico                   confere se Claude e Codex foram encontrados
-  revezar ajuda
+${color.bold('Other')}
+  clodex doctor                         checks that Claude and Codex were found
+  clodex help
 
-Opções do "novo": --tema, --ciclos N, --autonomia perguntar|decidir, --humano Nome, --permissoes leitura|escrita
+Options for "new": --topic, --cycles N, --autonomy ask|decide, --human Name, --permissions read|write, --language en|pt-BR
 
-Sem [pasta], usa a pasta atual (se for um debate) ou o último debate usado.
-Guia: docs/COMO-USAR.md · Referência: docs/MANUAL.md`;
+Without [folder], Clodex uses the current folder (if it is a debate) or the last debate used.
+Guide: docs/QUICKSTART.md · Reference: docs/MANUAL.md`;
 
-const OPCOES_SEM_VALOR = new Set(['agora', 'ajuda', 'help', 'h']);
+const FLAGS = new Set(['now', 'help', 'h']);
 
-export function analisarArgs(argv) {
-  const posicionais = [];
-  const opcoes = {};
+export function parseArgs(argv) {
+  const positional = [];
+  const options = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith('--') || (arg.startsWith('-') && arg.length === 2)) {
-      const [chave, valor] = arg.replace(/^--?/, '').split(/=(.*)/s, 2);
-      if (valor !== undefined) opcoes[chave] = valor;
-      else if (!OPCOES_SEM_VALOR.has(chave) && i + 1 < argv.length && !argv[i + 1].startsWith('--')) opcoes[chave] = argv[++i];
-      else opcoes[chave] = true;
+      const [key, value] = arg.replace(/^--?/, '').split(/=(.*)/s, 2);
+      if (value !== undefined) options[key] = value;
+      else if (!FLAGS.has(key) && i + 1 < argv.length && !argv[i + 1].startsWith('--')) options[key] = argv[++i];
+      else options[key] = true;
     } else {
-      posicionais.push(arg);
+      positional.push(arg);
     }
   }
-  return { posicionais, opcoes };
+  return { positional, options };
 }
 
-/** Pasta explícita (1º argumento) → pasta atual → último debate usado. */
-export function resolverPasta(posicionais, explicita) {
-  if (explicita) {
-    if (!ehPastaDeDebate(explicita)) throw new ErroAmigavel(`${path.resolve(explicita)} não é uma pasta de debate.`);
-    return path.resolve(explicita);
+/** Explicit folder (first argument) → current folder → last debate used. */
+export function resolveFolder(positional, explicit) {
+  if (explicit) {
+    if (!isDebateFolder(explicit)) throw new UserError(`${path.resolve(explicit)} is not a debate folder.`);
+    return path.resolve(explicit);
   }
-  if (posicionais.length && ehPastaDeDebate(posicionais[0])) return path.resolve(posicionais.shift());
-  if (ehPastaDeDebate(process.cwd())) return process.cwd();
-  const ultimo = lerUltimo();
-  if (ultimo && ehPastaDeDebate(ultimo)) return ultimo;
-  throw new ErroAmigavel('Não achei a pasta do debate. Passe o caminho (ex.: revezar status alinhamento/meu-debate) ou rode de dentro dela.');
+  if (positional.length && isDebateFolder(positional[0])) return path.resolve(positional.shift());
+  if (isDebateFolder(process.cwd())) return process.cwd();
+  const last = readLast();
+  if (last && isDebateFolder(last)) return last;
+  throw new UserError("Couldn't find the debate folder. Pass its path (e.g. clodex status debates/my-debate) or run from inside it.");
 }
 
-function avisarAlvo(pasta) {
-  if (path.resolve(pasta) !== process.cwd()) console.log(cor.cinza(`→ debate: ${pasta}`));
+function showTarget(dir) {
+  if (path.resolve(dir) !== process.cwd()) console.log(color.gray(`→ debate: ${dir}`));
 }
 
-export async function principal(argv) {
-  const [comando = 'ajuda', ...resto] = argv;
-  const { posicionais, opcoes } = analisarArgs(resto);
-  if (opcoes.ajuda || opcoes.help || opcoes.h) {
-    console.log(AJUDA);
+export async function main(argv) {
+  const [command = 'help', ...rest] = argv;
+  const { positional, options } = parseArgs(rest);
+  if (options.help || options.h) {
+    console.log(HELP);
     return 0;
   }
 
-  switch (comando) {
-    case 'novo': {
-      const destino = posicionais[0];
-      if (!destino) throw new ErroAmigavel('Diga onde criar: revezar novo <pasta> --tema "..."');
-      const { pasta, cfg } = criarDebate(destino, {
-        tema: opcoes.tema,
-        ciclos: opcoes.ciclos,
-        autonomia: opcoes.autonomia,
-        humano: opcoes.humano,
-        permissoes: opcoes.permissoes,
+  switch (command) {
+    case 'new': {
+      const target = positional[0];
+      if (!target) throw new UserError('Say where to create it: clodex new <folder> --topic "..."');
+      const { dir, cfg } = createDebate(target, {
+        topic: options.topic,
+        cycles: options.cycles,
+        autonomy: options.autonomy,
+        human: options.human,
+        permissions: options.permissions,
+        language: options.language,
       });
-      registrarUltimo(pasta);
-      console.log(`${cor.verde('✔')} Debate criado em ${pasta}`);
-      console.log(`  ${cor.negrito('1.')} Escreva a pauta: ${path.join(pasta, ARQUIVO_PAUTA)}`);
-      console.log(`  ${cor.negrito('2.')} Ajuste, se quiser: ${path.join(pasta, 'revezamento.json')} (ciclos: ${cfg.max_ciclos}, autonomia: ${cfg.autonomia})`);
-      console.log(`  ${cor.negrito('3.')} Rode: ${cor.negrito(`revezar iniciar "${path.relative(process.cwd(), pasta) || '.'}"`)}`);
+      rememberLast(dir);
+      console.log(`${color.green('✔')} Debate created in ${dir}`);
+      console.log(`  ${color.bold('1.')} Write the brief: ${path.join(dir, BRIEF_FILE)}`);
+      console.log(`  ${color.bold('2.')} Adjust if you like: ${path.join(dir, CONFIG_FILE)} (cycles: ${cfg.max_cycles}, autonomy: ${cfg.autonomy}, language: ${cfg.language})`);
+      console.log(`  ${color.bold('3.')} Run: ${color.bold(`clodex start "${path.relative(process.cwd(), dir) || '.'}"`)}`);
       return 0;
     }
 
-    case 'iniciar':
-    case 'comecar':
-    case 'começar': {
-      const pasta = resolverPasta(posicionais, opcoes.pasta);
-      await iniciar(pasta);
+    case 'start': {
+      await start(resolveFolder(positional, options.folder));
       return 0;
     }
 
-    case 'retomar': {
-      const pasta = resolverPasta(posicionais, opcoes.pasta);
-      if (maestroAtivo(pasta)) {
-        enviarParaCaixa(pasta, { tipo: 'retomar' });
-        avisarAlvo(pasta);
-        console.log('Pedido de retomar entregue ao maestro.');
+    case 'resume': {
+      const dir = resolveFolder(positional, options.folder);
+      if (isRunning(dir)) {
+        sendToInbox(dir, { type: 'resume' });
+        showTarget(dir);
+        console.log('Resume request delivered to the orchestrator.');
         return 0;
       }
-      await iniciar(pasta);
+      await start(dir);
       return 0;
     }
 
-    case 'continuar': {
-      const pasta = resolverPasta(posicionais, opcoes.pasta);
-      if (maestroAtivo(pasta)) throw new ErroAmigavel('O maestro ainda está rodando neste debate. Use "revezar responder" para falar com ele.');
-      await continuar(pasta, { mais: opcoes.mais ?? 1, mensagem: opcoes.mensagem ?? (posicionais.join(' ') || undefined) });
+    case 'continue': {
+      const dir = resolveFolder(positional, options.folder);
+      if (isRunning(dir)) throw new UserError('The orchestrator is still running this debate. Use "clodex reply" to talk to it.');
+      await continueDebate(dir, { more: options.more ?? 1, message: options.message ?? (positional.join(' ') || undefined) });
       return 0;
     }
 
-    case 'relatorio':
-    case 'relatório': {
-      const pasta = resolverPasta(posicionais, opcoes.pasta);
-      if (maestroAtivo(pasta)) throw new ErroAmigavel('O maestro ainda está rodando. Pare-o antes (revezar parar) ou espere o fim.');
-      await gerarRelatorio(pasta);
+    case 'report': {
+      const dir = resolveFolder(positional, options.folder);
+      if (isRunning(dir)) throw new UserError('The orchestrator is still running. Stop it first (clodex stop) or wait for the end.');
+      await generateReport(dir);
       return 0;
     }
 
-    case 'responder':
-    case 'comentar':
-    case 'falar': {
-      const pasta = resolverPasta(posicionais, opcoes.pasta);
-      const texto = resolverTexto(opcoes.mensagem ?? posicionais.join(' '));
-      if (!texto) throw new ErroAmigavel('Escreva a resposta: revezar responder "sua resposta" (ou @arquivo.md)');
-      enviarParaCaixa(pasta, { tipo: 'fala', texto });
-      avisarAlvo(pasta);
-      if (maestroAtivo(pasta)) console.log(`${cor.verde('✔')} Entregue ao maestro.`);
-      else console.log(`${cor.verde('✔')} Guardado. O maestro não está rodando: rode ${cor.negrito('revezar iniciar')} para continuar o debate.`);
+    case 'reply':
+    case 'say': {
+      const dir = resolveFolder(positional, options.folder);
+      const text = resolveText(options.message ?? positional.join(' '));
+      if (!text) throw new UserError('Write your answer: clodex reply "your answer" (or @file.md)');
+      sendToInbox(dir, { type: 'say', text });
+      showTarget(dir);
+      if (isRunning(dir)) console.log(`${color.green('✔')} Delivered to the orchestrator.`);
+      else console.log(`${color.green('✔')} Saved. The orchestrator is not running: run ${color.bold('clodex start')} to continue the debate.`);
       return 0;
     }
 
-    case 'pausar':
-    case 'parar': {
-      const pasta = resolverPasta(posicionais, opcoes.pasta);
-      avisarAlvo(pasta);
-      if (!maestroAtivo(pasta)) {
-        console.log('Nenhum maestro rodando neste debate. Nada a fazer.');
+    case 'pause':
+    case 'stop': {
+      const dir = resolveFolder(positional, options.folder);
+      showTarget(dir);
+      if (!isRunning(dir)) {
+        console.log('No orchestrator running for this debate. Nothing to do.');
         return 0;
       }
-      const tipo = comando === 'parar' && opcoes.agora ? 'parar_agora' : comando;
-      enviarParaCaixa(pasta, { tipo });
+      const type = command === 'stop' && options.now ? 'stop_now' : command;
+      sendToInbox(dir, { type });
       console.log(
         {
-          pausar: 'Pedido entregue: o maestro pausa ao fim do turno atual.',
-          parar: 'Pedido entregue: o maestro para ao fim do turno atual.',
-          parar_agora: 'Pedido entregue: o maestro interrompe a IA agora.',
-        }[tipo],
+          pause: 'Request delivered: the orchestrator will pause when the current turn ends.',
+          stop: 'Request delivered: the orchestrator will stop when the current turn ends.',
+          stop_now: 'Request delivered: the orchestrator is interrupting the AI now.',
+        }[type],
       );
       return 0;
     }
 
     case 'status': {
-      const pasta = resolverPasta(posicionais, opcoes.pasta);
-      const debate = carregarDebate(pasta);
-      console.log(descreverStatus(debate, lerEstado(pasta), { ativo: maestroAtivo(pasta) }));
+      const dir = resolveFolder(positional, options.folder);
+      console.log(describeStatus(loadDebate(dir), readState(dir), { running: isRunning(dir) }));
       return 0;
     }
 
-    case 'diagnostico':
-    case 'diagnóstico':
-      return diagnostico();
+    case 'doctor':
+      return doctor();
 
-    case 'ajuda':
     case 'help':
-      console.log(AJUDA);
+      console.log(HELP);
       return 0;
 
     default:
-      throw new ErroAmigavel(`Comando desconhecido: ${comando}. Veja: revezar ajuda`);
+      throw new UserError(`Unknown command: ${command}. See: clodex help`);
   }
 }
 
-function diagnostico() {
-  let tudoCerto = true;
-  const [maior] = process.versions.node.split('.').map(Number);
-  console.log(`${maior >= 22 ? cor.verde('✔') : cor.vermelho('✖')} Node ${process.versions.node}${maior >= 22 ? '' : ' (precisa ≥ 22)'}`);
-  if (maior < 22) tudoCerto = false;
-  for (const adaptador of Object.values(AGENTES)) {
-    const achado = adaptador.localizar();
-    if (!achado) {
-      tudoCerto = false;
-      console.log(`${cor.vermelho('✖')} ${adaptador.nome}: não encontrado. ${adaptador.comoInstalar}`);
+function doctor() {
+  let ok = true;
+  const [major] = process.versions.node.split('.').map(Number);
+  console.log(`${major >= 22 ? color.green('✔') : color.red('✖')} Node ${process.versions.node}${major >= 22 ? '' : ' (needs ≥ 22)'}`);
+  if (major < 22) ok = false;
+  for (const adapter of Object.values(AGENTS)) {
+    const found = adapter.locate();
+    if (!found) {
+      ok = false;
+      console.log(`${color.red('✖')} ${adapter.name}: not found. ${adapter.installHint}`);
       continue;
     }
-    const precisaShell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(achado.caminho);
-    const v = spawnSync(precisaShell ? `"${achado.caminho}" --version` : achado.caminho, precisaShell ? [] : ['--version'], {
+    const needsShell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(found.path);
+    const v = spawnSync(needsShell ? `"${found.path}" --version` : found.path, needsShell ? [] : ['--version'], {
       encoding: 'utf8',
       timeout: 30_000,
       windowsHide: true,
-      shell: precisaShell,
+      shell: needsShell,
     });
-    const versao = (v.stdout || v.stderr || '').trim().split(/\r?\n/)[0];
-    const ok = v.status === 0;
-    if (!ok) tudoCerto = false;
-    console.log(`${ok ? cor.verde('✔') : cor.vermelho('✖')} ${adaptador.nome}: ${versao || 'não respondeu a --version'}`);
-    console.log(cor.cinza(`    ${achado.caminho}  (${achado.origem})`));
+    const version = (v.stdout || v.stderr || '').trim().split(/\r?\n/)[0];
+    if (v.status !== 0) ok = false;
+    console.log(`${v.status === 0 ? color.green('✔') : color.red('✖')} ${adapter.name}: ${version || 'did not answer --version'}`);
+    console.log(color.gray(`    ${found.path}  (${found.source})`));
   }
-  const ultimo = lerUltimo();
-  if (ultimo && fs.existsSync(ultimo)) console.log(cor.cinza(`Último debate usado: ${ultimo}`));
-  console.log(tudoCerto ? cor.verde('Tudo pronto.') : cor.amarelo('Resolva os itens marcados com ✖ antes de iniciar um debate.'));
-  return tudoCerto ? 0 : 1;
+  const last = readLast();
+  if (last && fs.existsSync(last)) console.log(color.gray(`Last debate used: ${last}`));
+  console.log(ok ? color.green('All set.') : color.yellow('Fix the items marked ✖ before starting a debate.'));
+  return ok ? 0 : 1;
 }

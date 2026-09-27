@@ -2,56 +2,63 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import './apoio.mjs';
-import { pastaTemporaria } from './apoio.mjs';
-import { MARCA_MODELO, carregarDebate, criarDebate, slugDoHumano, verificarPauta } from '../src/config.mjs';
+import { tempDir } from './helpers.mjs';
+import { TEMPLATE_MARK, checkBrief, createDebate, humanSlug, loadDebate } from '../src/config.mjs';
 
-test('novo cria config e pauta em branco, e iniciar recusa pauta não preenchida', () => {
-  const pasta = path.join(pastaTemporaria(), 'debate');
-  criarDebate(pasta, { tema: 'Cores', ciclos: '2', humano: 'Luiz' });
-  const cfg = JSON.parse(fs.readFileSync(path.join(pasta, 'revezamento.json'), 'utf8'));
-  assert.equal(cfg.tema, 'Cores');
-  assert.equal(cfg.max_ciclos, 2);
-  assert.equal(cfg.humano, 'Luiz');
-  assert.throws(() => verificarPauta(pasta), /modelo em branco/);
-  const pauta = path.join(pasta, '00-pauta.md');
-  fs.writeFileSync(pauta, fs.readFileSync(pauta, 'utf8').replace(MARCA_MODELO, ''));
-  assert.doesNotThrow(() => verificarPauta(pasta));
-  assert.throws(() => criarDebate(pasta), /Já existe/);
+test('new creates config and a blank brief, and start refuses an unfilled brief', () => {
+  const dir = path.join(tempDir(), 'debate');
+  createDebate(dir, { topic: 'Colors', cycles: '2', human: 'Alex', language: 'en' });
+  const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'clodex.json'), 'utf8'));
+  assert.equal(cfg.topic, 'Colors');
+  assert.equal(cfg.max_cycles, 2);
+  assert.equal(cfg.human, 'Alex');
+  assert.equal(cfg.language, 'en');
+  assert.match(fs.readFileSync(path.join(dir, '00-brief.md'), 'utf8'), /# Brief: Colors/);
+  assert.throws(() => checkBrief(dir), /blank template/);
+  const brief = path.join(dir, '00-brief.md');
+  fs.writeFileSync(brief, fs.readFileSync(brief, 'utf8').replace(TEMPLATE_MARK, ''));
+  assert.doesNotThrow(() => checkBrief(dir));
+  assert.throws(() => createDebate(dir), /already a debate/);
 });
 
-test('valida a configuração com mensagens claras', () => {
-  const pasta = pastaTemporaria();
-  const gravar = (cfg) => fs.writeFileSync(path.join(pasta, 'revezamento.json'), JSON.stringify(cfg));
-  gravar({ participantes: ['claude'], max_ciclos: 0, autonomia: 'talvez', relator: 'gemini' });
-  assert.throws(() => carregarDebate(pasta), (erro) => {
-    assert.match(erro.message, /pelo menos 2/);
-    assert.match(erro.message, /max_ciclos/);
-    assert.match(erro.message, /autonomia/);
-    assert.match(erro.message, /relator/);
+test('the brief template follows the debate language', () => {
+  const dir = path.join(tempDir(), 'debate');
+  createDebate(dir, { topic: 'Cores', language: 'pt-BR' });
+  assert.match(fs.readFileSync(path.join(dir, '00-brief.md'), 'utf8'), /# Pauta: Cores/);
+});
+
+test('validates the configuration with clear messages', () => {
+  const dir = tempDir();
+  const write = (cfg) => fs.writeFileSync(path.join(dir, 'clodex.json'), JSON.stringify(cfg));
+  write({ participants: ['claude'], max_cycles: 0, autonomy: 'maybe', reporter: 'gemini' });
+  assert.throws(() => loadDebate(dir), (error) => {
+    assert.match(error.message, /at least 2/);
+    assert.match(error.message, /max_cycles/);
+    assert.match(error.message, /autonomy/);
+    assert.match(error.message, /reporter/);
     return true;
   });
-  gravar({ participantes: ['claude', 'codex'], relator: null });
-  assert.equal(carregarDebate(pasta).cfg.relator, null);
-  fs.writeFileSync(path.join(pasta, 'revezamento.json'), '{ quebrado');
-  assert.throws(() => carregarDebate(pasta), /JSON válido/);
+  write({ participants: ['claude', 'codex'], reporter: null });
+  assert.equal(loadDebate(dir).cfg.reporter, null);
+  fs.writeFileSync(path.join(dir, 'clodex.json'), '{ broken');
+  assert.throws(() => loadDebate(dir), /valid JSON/);
 });
 
-test('raiz do projeto: git acima da pasta, senão a pasta-mãe, ou o valor configurado', () => {
-  const base = pastaTemporaria();
+test('project root: git above the folder, otherwise the parent folder, or the configured value', () => {
+  const base = tempDir();
   const debate = path.join(base, 'docs', 'debate');
   fs.mkdirSync(debate, { recursive: true });
-  fs.writeFileSync(path.join(debate, 'revezamento.json'), '{}');
-  assert.equal(carregarDebate(debate).raiz, path.join(base, 'docs'));
+  fs.writeFileSync(path.join(debate, 'clodex.json'), '{}');
+  assert.equal(loadDebate(debate).root, path.join(base, 'docs'));
   fs.mkdirSync(path.join(base, '.git'));
-  assert.equal(carregarDebate(debate).raiz, base);
-  fs.writeFileSync(path.join(debate, 'revezamento.json'), JSON.stringify({ raiz_do_projeto: '..' }));
-  assert.equal(carregarDebate(debate).raiz, path.join(base, 'docs'));
+  assert.equal(loadDebate(debate).root, base);
+  fs.writeFileSync(path.join(debate, 'clodex.json'), JSON.stringify({ project_root: '..' }));
+  assert.equal(loadDebate(debate).root, path.join(base, 'docs'));
 });
 
-test('nome do humano vira slug sem colidir com as IAs', () => {
-  assert.equal(slugDoHumano('Luiz Augusto'), 'luiz-augusto');
-  assert.equal(slugDoHumano('João'), 'joao');
-  assert.equal(slugDoHumano('Claude'), 'claude-humano');
-  assert.equal(slugDoHumano('Relatório'), 'relatorio-humano');
+test("the human's name becomes a slug that never collides with the AIs", () => {
+  assert.equal(humanSlug('Alex Smith'), 'alex-smith');
+  assert.equal(humanSlug('João'), 'joao');
+  assert.equal(humanSlug('Claude'), 'claude-human');
+  assert.equal(humanSlug('Report'), 'report-human');
 });

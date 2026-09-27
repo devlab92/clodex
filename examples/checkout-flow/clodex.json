@@ -1,0 +1,13 @@
+{
+  "topic": "Mobile checkout flow",
+  "participants": ["claude", "codex"],
+  "max_cycles": 3,
+  "autonomy": "ask",
+  "human": "Alex",
+  "language": "en",
+  "reporter": "claude",
+  "report_review": true,
+  "permissions": "read",
+  "turn_timeout_min": 30,
+  "extra_instructions": "Always think of a buyer in a hurry, on a phone, with a poor connection."
+}

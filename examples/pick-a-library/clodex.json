@@ -1,0 +1,12 @@
+{
+  "topic": "Library to generate PDF receipts",
+  "participants": ["codex", "claude"],
+  "max_cycles": 2,
+  "autonomy": "decide",
+  "human": "Alex",
+  "language": "en",
+  "reporter": "claude",
+  "report_review": true,
+  "permissions": "read",
+  "extra_instructions": "Criteria, in order: license, active maintenance, size, ease of testing. Do not install anything: just analyze."
+}

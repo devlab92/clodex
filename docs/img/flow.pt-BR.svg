@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="900" height="480" role="img" aria-labelledby="titulo desc" font-family="Segoe UI, system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <title id="titulo">Como o Clodex funciona</title>
+  <desc id="desc">Você escreve a pauta; Claude e Codex revezam turnos até consenso ou limite de ciclos; se uma IA pergunta, o debate pausa até você responder; no fim o Claude escreve o relatório, o Codex confere, e você decide.</desc>
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/>
+    </marker>
+    <marker id="seta-roxa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9333ea"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="900" height="480" rx="16" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="30" y="40" font-size="20" font-weight="700" fill="#111827">Como o Clodex funciona</text>
+
+  <!-- 1. pauta -->
+  <rect x="30" y="80" width="200" height="76" rx="12" fill="#f3e8ff" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="130" y="108" text-anchor="middle" font-size="15" font-weight="700" fill="#581c87">① Você</text>
+  <text x="130" y="128" text-anchor="middle" font-size="13" fill="#3b0764">escreve a pauta</text>
+  <text x="130" y="146" text-anchor="middle" font-size="11" fill="#6b21a8" font-family="Consolas, Menlo, monospace">00-brief.md</text>
+
+  <!-- 2. debate -->
+  <rect x="280" y="64" width="380" height="196" rx="14" fill="#f9fafb" stroke="#9ca3af" stroke-dasharray="6 5"/>
+  <line x1="232" y1="132" x2="298" y2="132" stroke="#6b7280" stroke-width="2" marker-end="url(#seta)"/>
+  <text x="470" y="88" text-anchor="middle" font-size="13" font-weight="700" fill="#374151">② As IAs revezam, sozinhas (até N ciclos)</text>
+
+  <rect x="300" y="100" width="150" height="64" rx="10" fill="#fde8dd" stroke="#d97757" stroke-width="1.5"/>
+  <text x="375" y="128" text-anchor="middle" font-size="15" font-weight="700" fill="#7c2d12">Claude</text>
+  <text x="375" y="148" text-anchor="middle" font-size="11" fill="#9a3412" font-family="Consolas, Menlo, monospace">01-claude.md</text>
+
+  <rect x="490" y="100" width="150" height="64" rx="10" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="565" y="128" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a8a">Codex</text>
+  <text x="565" y="148" text-anchor="middle" font-size="11" fill="#1d4ed8" font-family="Consolas, Menlo, monospace">02-codex.md</text>
+
+  <line x1="452" y1="120" x2="488" y2="120" stroke="#6b7280" stroke-width="2" marker-end="url(#seta)"/>
+  <line x1="488" y1="146" x2="452" y2="146" stroke="#6b7280" stroke-width="2" marker-end="url(#seta)"/>
+
+  <text x="470" y="190" text-anchor="middle" font-size="12.5" fill="#4b5563">cada IA lê tudo o que veio antes, responde</text>
+  <text x="470" y="207" text-anchor="middle" font-size="12.5" fill="#4b5563">e termina com um VERDICT (veredito):</text>
+  <rect x="326" y="220" width="96" height="24" rx="12" fill="#dbeafe"/>
+  <text x="374" y="236" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1e40af">CONTINUE</text>
+  <rect x="428" y="220" width="104" height="24" rx="12" fill="#dcfce7"/>
+  <text x="480" y="236" text-anchor="middle" font-size="11.5" font-weight="700" fill="#166534">CONSENSUS</text>
+  <rect x="538" y="220" width="92" height="24" rx="12" fill="#f3e8ff"/>
+  <text x="584" y="236" text-anchor="middle" font-size="11.5" font-weight="700" fill="#6b21a8">QUESTION</text>
+
+  <!-- pergunta -->
+  <line x1="584" y1="262" x2="584" y2="296" stroke="#9333ea" stroke-width="2" marker-end="url(#seta-roxa)"/>
+  <line x1="360" y1="296" x2="360" y2="262" stroke="#9333ea" stroke-width="2" marker-end="url(#seta-roxa)"/>
+  <text x="596" y="284" font-size="11.5" fill="#7e22ce">pausa</text>
+  <text x="300" y="284" font-size="11.5" fill="#7e22ce">continua</text>
+  <rect x="280" y="298" width="380" height="54" rx="12" fill="#faf5ff" stroke="#a855f7" stroke-dasharray="5 4"/>
+  <text x="470" y="320" text-anchor="middle" font-size="13" font-weight="700" fill="#6b21a8">❓ Uma IA precisa de você</text>
+  <text x="470" y="340" text-anchor="middle" font-size="12" fill="#581c87">aviso do sistema → você responde no terminal</text>
+
+  <!-- 3. fim -->
+  <line x1="662" y1="132" x2="698" y2="132" stroke="#6b7280" stroke-width="2" marker-end="url(#seta)"/>
+  <rect x="700" y="94" width="170" height="76" rx="12" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="785" y="122" text-anchor="middle" font-size="15" font-weight="700" fill="#14532d">③ Fim</text>
+  <text x="785" y="142" text-anchor="middle" font-size="12.5" fill="#166534">consenso ou</text>
+  <text x="785" y="159" text-anchor="middle" font-size="12.5" fill="#166534">limite de ciclos</text>
+  <line x1="785" y1="172" x2="785" y2="378" stroke="#6b7280" stroke-width="2" marker-end="url(#seta)"/>
+
+  <!-- 4. relatório -->
+  <rect x="700" y="380" width="170" height="76" rx="12" fill="#fde8dd" stroke="#d97757" stroke-width="1.5"/>
+  <text x="785" y="408" text-anchor="middle" font-size="15" font-weight="700" fill="#7c2d12">④ Relatório</text>
+  <text x="785" y="428" text-anchor="middle" font-size="12.5" fill="#9a3412">Claude, como relator</text>
+  <text x="785" y="445" text-anchor="middle" font-size="12.5" fill="#9a3412">neutro</text>
+  <line x1="698" y1="418" x2="652" y2="418" stroke="#6b7280" stroke-width="2" marker-end="url(#seta)"/>
+
+  <!-- 5. conferência -->
+  <rect x="460" y="380" width="190" height="76" rx="12" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="555" y="408" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a8a">⑤ Conferência</text>
+  <text x="555" y="428" text-anchor="middle" font-size="12.5" fill="#1d4ed8">Codex confere se foi</text>
+  <text x="555" y="445" text-anchor="middle" font-size="12.5" fill="#1d4ed8">bem representado</text>
+  <line x1="458" y1="418" x2="232" y2="418" stroke="#6b7280" stroke-width="2" marker-end="url(#seta)"/>
+
+  <!-- 6. você decide -->
+  <rect x="30" y="380" width="200" height="76" rx="12" fill="#f3e8ff" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="130" y="408" text-anchor="middle" font-size="15" font-weight="700" fill="#581c87">⑥ Você decide</text>
+  <text x="130" y="428" text-anchor="middle" font-size="12.5" fill="#3b0764">lê o relatório e responde</text>
+  <text x="130" y="445" text-anchor="middle" font-size="12.5" fill="#3b0764">o "Preciso que você decida"</text>
+
+  <!-- mais uma rodada -->
+  <path d="M 130 378 L 130 158" fill="none" stroke="#9333ea" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#seta-roxa)"/>
+  <text x="140" y="260" font-size="11.5" fill="#7e22ce">mais uma rodada?</text>
+  <text x="140" y="276" font-size="11" fill="#7e22ce" font-family="Consolas, Menlo, monospace">clodex continue</text>
+</svg>

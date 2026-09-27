@@ -1,85 +1,77 @@
 import path from 'node:path';
-import { nomeDoAgente } from './agentes/index.mjs';
-import { cor } from './console.mjs';
-import { cicloAtual, limiteDeTurnos, proximoParticipante } from './transcricao.mjs';
-import { duracao } from './util.mjs';
+import { agentName } from './agents/index.mjs';
+import { color } from './terminal.mjs';
+import { currentCycle, nextParticipant, turnLimit } from './transcript.mjs';
+import { formatDuration } from './util.mjs';
 
-const MOTIVOS = { consenso: 'consenso entre as IAs', limite: 'limite de ciclos', pedido: 'relatório pedido por você' };
+const REASONS = { consensus: 'consensus between the AIs', limit: 'cycle limit', requested: 'report requested by you' };
 
-export function corDoVeredito(v) {
-  if (v === 'CONSENSO') return cor.verde(v);
-  if (v === 'PERGUNTA') return cor.magenta(v);
-  return cor.azul(v ?? '—');
+export function verdictColor(v) {
+  if (v === 'CONSENSUS') return color.green(v);
+  if (v === 'QUESTION') return color.magenta(v);
+  return color.blue(v ?? '—');
 }
 
-export function situacao(debate, estado, ativo) {
-  const e = estado;
-  switch (e?.status ?? 'novo') {
-    case 'novo':
-      return { texto: 'ainda não começou', proximo: 'revezar iniciar' };
-    case 'rodando':
-      if (!ativo) return { texto: 'interrompido no meio (o maestro não está rodando)', proximo: 'revezar iniciar' };
+export function situation(debate, state, running) {
+  const s = state;
+  switch (s?.status ?? 'new') {
+    case 'new':
+      return { text: 'not started yet', next: 'clodex start' };
+    case 'running':
+      if (!running) return { text: 'interrupted midway (the orchestrator is not running)', next: 'clodex start' };
       return {
-        texto:
-          e.fase === 'debate'
-            ? `em andamento (vez de ${nomeDoAgente(proximoParticipante(e.turnos, debate.cfg.participantes))})`
-            : 'escrevendo o relatório',
-        proximo: null,
+        text: s.phase === 'debate' ? `in progress (${agentName(nextParticipant(s.turns, debate.cfg.participants))}'s turn)` : 'writing the report',
+        next: null,
       };
-    case 'aguardando_humano':
-      return { texto: cor.magenta('esperando sua resposta'), proximo: 'revezar responder "sua resposta"' };
-    case 'pausado':
-      return { texto: cor.amarelo('pausado'), proximo: 'revezar retomar' };
-    case 'erro':
-      return { texto: cor.vermelho(`parado por erro: ${e.erro?.mensagem ?? '?'}`), proximo: 'revezar retomar' };
-    case 'parado':
-      return { texto: cor.amarelo('parado a seu pedido'), proximo: 'revezar iniciar' };
-    case 'concluido':
+    case 'waiting_human':
+      return { text: color.magenta('waiting for your answer'), next: 'clodex reply "your answer"' };
+    case 'paused':
+      return { text: color.yellow('paused'), next: 'clodex resume' };
+    case 'error':
+      return { text: color.red(`stopped on an error: ${s.error?.message ?? '?'}`), next: 'clodex resume' };
+    case 'stopped':
+      return { text: color.yellow('stopped at your request'), next: 'clodex start' };
+    case 'done':
       return {
-        texto: cor.verde(`concluído (${MOTIVOS[e.motivo] ?? e.motivo ?? 'fim'})`),
-        proximo: 'revezar continuar --mais 1 --mensagem "..."  (só se quiser mais uma rodada)',
+        text: color.green(`finished (${REASONS[s.reason] ?? s.reason ?? 'end'})`),
+        next: 'clodex continue --more 1 --message "..."  (only if you want another round)',
       };
     default:
-      return { texto: e.status, proximo: null };
+      return { text: s.status, next: null };
   }
 }
 
-export function descreverStatus(debate, estado, { ativo = false } = {}) {
+export function describeStatus(debate, state, { running = false } = {}) {
   const { cfg } = debate;
-  const e = estado ?? { status: 'novo', turnos: [], fase: 'debate', ciclosExtras: 0 };
-  const total = limiteDeTurnos(cfg, e) / cfg.participantes.length;
-  const s = situacao(debate, e, ativo);
-  const linhas = [
-    cor.negrito(`Revezamento · ${cfg.tema}`),
-    `Pasta:     ${debate.pasta}`,
-    `Situação:  ${s.texto}`,
-    `Ciclo:     ${Math.min(cicloAtual(e.turnos, cfg.participantes), total)} de ${total} · autonomia: ${cfg.autonomia} · maestro: ${ativo ? cor.verde('rodando') : 'parado'}`,
+  const s = state ?? { status: 'new', turns: [], phase: 'debate', extraCycles: 0 };
+  const total = turnLimit(cfg, s) / cfg.participants.length;
+  const sit = situation(debate, s, running);
+  const lines = [
+    color.bold(`Clodex · ${cfg.topic}`),
+    `Folder:    ${debate.dir}`,
+    `Status:    ${sit.text}`,
+    `Cycle:     ${Math.min(currentCycle(s.turns, cfg.participants), total)} of ${total} · autonomy: ${cfg.autonomy} · orchestrator: ${running ? color.green('running') : 'stopped'}`,
     '',
   ];
-  if (e.turnos.length) {
-    linhas.push(cor.cinza(' Turno  Autor        Veredito      Duração  Arquivo'));
-    for (const t of e.turnos) {
-      const autor = t.tipo === 'humano' ? cfg.humano : nomeDoAgente(t.autor);
-      const veredito =
-        t.tipo === 'agente'
-          ? corDoVeredito(t.veredito)
-          : t.tipo === 'relatorio'
-            ? cor.ciano('RELATÓRIO')
-            : cor.magenta('FALA');
-      const pad = (texto, n) => texto + ' '.repeat(Math.max(1, n - texto.replace(/\x1b\[[0-9;]*m/g, '').length));
-      linhas.push(
-        ` ${pad(String(t.n).padStart(2, '0'), 7)}${pad(autor, 13)}${pad(veredito, 14)}${pad(t.duracaoS ? duracao(t.duracaoS) : '', 9)}${cor.cinza(t.arquivo)}`,
+  if (s.turns.length) {
+    const pad = (text, n) => text + ' '.repeat(Math.max(1, n - text.replace(/\x1b\[[0-9;]*m/g, '').length));
+    lines.push(color.gray(' Turn   Author       Verdict       Time     File'));
+    for (const t of s.turns) {
+      const author = t.kind === 'human' ? cfg.human : agentName(t.author);
+      const verdict = t.kind === 'agent' ? verdictColor(t.verdict) : t.kind === 'report' ? color.cyan('REPORT') : color.magenta('MESSAGE');
+      lines.push(
+        ` ${pad(String(t.n).padStart(2, '0'), 7)}${pad(author, 13)}${pad(verdict, 14)}${pad(t.durationS ? formatDuration(t.durationS) : '', 9)}${color.gray(t.file)}`,
       );
     }
-    linhas.push('');
+    lines.push('');
   }
-  if (e.status === 'aguardando_humano' && e.pergunta) {
-    linhas.push(cor.magenta(`Pergunta de ${nomeDoAgente(e.pergunta.autor)} (turno ${e.pergunta.turno}):`));
-    for (const l of e.pergunta.texto.split('\n')) linhas.push(`  ${l}`);
-    linhas.push('');
+  if (s.status === 'waiting_human' && s.question) {
+    lines.push(color.magenta(`Question from ${agentName(s.question.author)} (turn ${s.question.turn}):`));
+    for (const l of s.question.text.split('\n')) lines.push(`  ${l}`);
+    lines.push('');
   }
-  const relatorio = [...e.turnos].reverse().find((t) => t.tipo === 'relatorio');
-  if (relatorio) linhas.push(`Último relatório: ${path.join(debate.pasta, relatorio.arquivo)}`);
-  if (s.proximo) linhas.push(`Próximo passo: ${cor.negrito(s.proximo)}`);
-  return linhas.join('\n');
+  const report = [...s.turns].reverse().find((t) => t.kind === 'report');
+  if (report) lines.push(`Latest report: ${path.join(debate.dir, report.file)}`);
+  if (sit.next) lines.push(`Next step: ${color.bold(sit.next)}`);
+  return lines.join('\n');
 }

@@ -1,16 +1,16 @@
 {
-  "name": "revezamento-ia",
-  "version": "0.1.0",
-  "description": "Maestro que faz duas IAs de código (Claude Code e Codex) debaterem em turnos, sozinhas, com limite de ciclos, pausa para o humano e relatório final.",
+  "name": "clodex",
+  "version": "0.2.0",
+  "description": "Clodex · AI interaction: a command-line orchestrator that makes Claude Code and Codex debate in turns, with a cycle limit, pauses for the human, and a final report.",
   "type": "module",
   "bin": {
-    "revezar": "bin/revezar.mjs"
+    "clodex": "bin/clodex.mjs"
   },
   "files": [
     "bin",
     "src",
     "docs",
-    "exemplos"
+    "examples"
   ],
   "scripts": {
     "test": "node --test \"test/**/*.test.mjs\""
@@ -22,7 +22,8 @@
     "claude-code",
     "codex",
     "multi-agent",
+    "orchestrator",
     "debate",
-    "orchestrator"
+    "cli"
   ]
 }
